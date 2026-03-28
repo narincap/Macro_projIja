@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Five-Market Macroeconomic Model — Legacy Bridge Capital</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Lora:ital,wght@0,400;1,400&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:'Inter',system-ui,sans-serif;background:#fff;color:#1a1a1a}
+#app{display:flex;flex-direction:column;height:100vh}
+
+/* ===== TOP BAR ===== */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-bottom:1px solid #E8E8E4;background:#fff;z-index:30;flex-shrink:0;gap:16px}
+.topbar-left{display:flex;align-items:center;gap:14px}
+.topbar h1{font-size:15px;font-weight:700;letter-spacing:-.3px;white-space:nowrap}
+.mode-select{position:relative}
+.mode-select select{appearance:none;-webkit-appearance:none;padding:7px 32px 7px 12px;border:1.5px solid #E0E0DC;border-radius:8px;font-family:inherit;font-size:12.5px;font-weight:600;color:#333;background:#FAFAF8 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;cursor:pointer;transition:all .15s}
+.mode-select select:hover{border-color:#bbb;background-color:#F5F5F2}
+.mode-select select:focus{outline:none;border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.legend-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.leg{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:500;color:#888;letter-spacing:.2px}
+.leg .d{width:8px;height:8px;border-radius:3px}
+.topbar-hint{font-size:11px;color:#aaa;font-style:italic;white-space:nowrap}
+
+/* ===== MAIN AREA ===== */
+#main-area{flex:1;display:flex;overflow:hidden;position:relative}
+
+/* ===== FLOWCHART VIEW ===== */
+#flowchart-view{flex:1;display:flex;overflow:hidden}
+#canvas-area{flex:1;overflow:hidden;position:relative;cursor:grab;background:#FAFAF8}
+#canvas-area:active{cursor:grabbing}
+#canvas-area svg{position:absolute;top:0;left:0}
+.zoom-controls{position:absolute;bottom:48px;left:20px;display:flex;flex-direction:column;gap:4px;z-index:10}
+.zoom-controls button{width:34px;height:34px;border-radius:8px;border:1px solid #ddd;background:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#555;box-shadow:0 1px 3px rgba(0,0,0,.05);transition:all .12s}
+.zoom-controls button:hover{background:#f5f5f5;color:#222}
+.zoom-pct{font-size:9px;text-align:center;color:#aaa;font-weight:500;margin-top:1px}
+
+/* ===== EXPLORER VIEW ===== */
+#explorer-view{flex:1;display:none;overflow:hidden}
+#explorer-left{flex:1;overflow-y:auto;padding:20px 24px}
+.market-zone{border-radius:10px;padding:12px 14px;margin-bottom:8px;border:1px solid}
+.market-zone h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.nodes-wrap{display:flex;flex-wrap:wrap;gap:6px}
+.nbtn{padding:7px 13px;border-radius:7px;cursor:pointer;font-size:12.5px;font-weight:500;font-family:inherit;border:1.5px solid;background:#fff;transition:all .12s}
+.nbtn:hover{transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.nbtn.active{transform:translateY(-1px);box-shadow:0 2px 12px rgba(0,0,0,.1);font-weight:600}
+.nbtn.exo{border-style:dashed}
+.hint-box{text-align:center;padding:36px 20px;color:#bbb;font-size:13px;font-style:italic;margin-top:16px}
+
+/* Market zone colors */
+.mz-goods{background:#EFF6FF;border-color:rgba(37,99,235,.15)}.mz-goods h3{color:#1E40AF}
+.mz-labor{background:#ECFDF5;border-color:rgba(5,150,105,.15)}.mz-labor h3{color:#065F46}
+.mz-money{background:#FFFBEB;border-color:rgba(217,119,6,.15)}.mz-money h3{color:#92400E}
+.mz-trade{background:#F5F3FF;border-color:rgba(124,58,237,.15)}.mz-trade h3{color:#5B21B6}
+.mz-asset{background:#FDF2F8;border-color:rgba(219,39,119,.15)}.mz-asset h3{color:#9D174D}
+.mz-exo{background:#FEF2F2;border-color:rgba(220,38,38,.12)}.mz-exo h3{color:#991B1B}
+.nb-goods{border-color:#2563EB;color:#1E40AF}.nb-goods.active,.nb-goods:hover{background:#EFF6FF}
+.nb-labor{border-color:#059669;color:#065F46}.nb-labor.active,.nb-labor:hover{background:#ECFDF5}
+.nb-money{border-color:#D97706;color:#92400E}.nb-money.active,.nb-money:hover{background:#FFFBEB}
+.nb-trade{border-color:#7C3AED;color:#5B21B6}.nb-trade.active,.nb-trade:hover{background:#F5F3FF}
+.nb-asset{border-color:#DB2777;color:#9D174D}.nb-asset.active,.nb-asset:hover{background:#FDF2F8}
+.nb-exo{border-color:#DC2626;color:#991B1B}.nb-exo.active,.nb-exo:hover{background:#FEF2F2}
+
+/* ===== SHARED SIDEBAR ===== */
+#sidebar{width:440px;min-width:440px;height:100%;background:#fff;border-left:1px solid #E8E8E4;overflow-y:auto;overflow-x:hidden;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);flex-shrink:0;z-index:20;position:relative}
+#sidebar.open{transform:translateX(0)}
+.sb-head{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #EDEDEA}
+.sb-head-inner{padding:14px 18px 12px;display:flex;justify-content:space-between;align-items:flex-start}
+.sb-name{font-size:19px;font-weight:700;letter-spacing:-.3px;line-height:1.2}
+.sb-pill{display:inline-block;margin-top:4px;padding:2px 9px;border-radius:5px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+.sb-close{width:28px;height:28px;border-radius:7px;border:1px solid #E5E5E2;background:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;color:#999;flex-shrink:0;margin-left:10px;transition:all .12s}
+.sb-close:hover{background:#F5F5F2;color:#333}
+.sb-tabs{display:flex;border-bottom:1px solid #EDEDEA;padding:0 18px;gap:0}
+.sb-tab{padding:9px 14px;font-size:11.5px;font-weight:500;color:#aaa;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;letter-spacing:.2px}
+.sb-tab:hover{color:#666}
+.sb-tab.active{color:#1a1a1a;border-bottom-color:#1a1a1a}
+.sb-body{padding:18px}
+
+/* Sidebar content */
+.sb-desc{font-family:'Lora',Georgia,serif;font-size:14px;line-height:1.75;color:#333;margin-bottom:16px}
+.sec{margin-bottom:18px}
+.sec-title{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#B0AFA8;margin-bottom:7px;display:flex;align-items:center;gap:6px}
+.sec-title::after{content:'';flex:1;height:1px;background:#EDEDEA}
+.eq{background:#F8F7F5;border:1px solid #ECEAE6;border-radius:7px;padding:9px 13px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;color:#2a2a2a;margin-bottom:4px;overflow-x:auto}
+.slist{list-style:none}
+.slist li{padding:5px 0 5px 18px;position:relative;font-size:13px;line-height:1.55;border-bottom:1px solid #F5F5F2}
+.slist li:last-child{border-bottom:none}
+.slist.det li::before{content:"◆";position:absolute;left:0;top:6px;font-size:5px;color:#ccc}
+.slist.eff li::before{content:"→";position:absolute;left:1px;top:5px;font-size:13px;color:#2563EB}
+.slist.chain li::before{content:"⟶";position:absolute;left:0;top:4px;font-size:12px;color:#7C3AED}
+.slist.chain li{font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.6;padding-left:20px}
+.insight-box{border-radius:9px;padding:12px 14px;font-size:13px;line-height:1.7;margin-bottom:6px}
+.insight-box.intuition{background:#FEFCE8;border:1px solid #FDE68A;color:#713F12}
+.insight-box.examtip{background:#F0FDF4;border:1px solid #BBF7D0;color:#14532D}
+.chart-wrap{background:#FAFAF8;border:1px solid #ECEAE6;border-radius:9px;padding:12px 14px;margin-bottom:8px}
+.chart-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#999;margin-bottom:8px}
+.chart-wrap canvas{width:100%!important;height:180px!important}
+.conn-section{display:flex;flex-direction:column;gap:5px}
+.conn-row{display:flex;align-items:flex-start;gap:7px}
+.conn-dir{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:3px 7px;border-radius:4px;white-space:nowrap;margin-top:1px;min-width:50px;text-align:center}
+.conn-dir.into{background:#ECFDF5;color:#065F46}
+.conn-dir.outof{background:#EFF6FF;color:#1E40AF}
+.conn-chips{display:flex;flex-wrap:wrap;gap:4px}
+.conn-chip{padding:3px 9px;border-radius:5px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid #E5E5E2;background:#fff;transition:all .1s}
+.conn-chip:hover{background:#F5F5F2;transform:translateY(-1px)}
+
+/* ===== FOOTER ===== */
+.footer{display:flex;justify-content:space-between;align-items:center;padding:8px 20px;border-top:1px solid #E8E8E4;background:#fff;flex-shrink:0;z-index:30}
+.footer-credit{font-size:10.5px;color:#999;font-weight:500;letter-spacing:.1px}
+.footer-credit strong{font-weight:600;color:#777}
+.footer-brand{font-size:10.5px;color:#999;font-weight:500;letter-spacing:.1px;display:flex;align-items:center;gap:5px}
+.footer-brand strong{font-weight:700;color:#666;letter-spacing:.2px}
+
+/* ===== SVG ===== */
+.zone-rect{stroke-width:1.5;stroke-dasharray:6 4;fill-opacity:.35}
+.zone-label{font-family:'Inter';font-weight:700;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;opacity:.55}
+.node-g{cursor:pointer}.node-g:hover .nrect{filter:brightness(.96)}
+.nrect{stroke-width:1.8;transition:all .25s;rx:8}.nrect.exo{stroke-dasharray:6 3}
+.nlabel{font-family:'Inter';font-weight:600;font-size:13px;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.nsub{font-family:'Inter';font-weight:400;font-size:9px;text-anchor:middle;dominant-baseline:central;pointer-events:none;opacity:.65}
+.edge-path{fill:none;stroke-width:1.2;opacity:.18;transition:opacity .3s,stroke-width .3s}
+.edge-lbl{font-family:'Inter';font-size:8px;font-weight:500;fill:#888;opacity:0;transition:opacity .3s;pointer-events:none}
+.edge-lbl-bg{fill:#FAFAF8;opacity:0;transition:opacity .3s}
+svg.dimmed .node-g{opacity:.08;transition:opacity .3s}
+svg.dimmed .edge-path{opacity:.03}
+svg.dimmed .node-g.hl{opacity:1}
+svg.dimmed .node-g.hl .nrect{stroke-width:2.5;filter:drop-shadow(0 2px 8px rgba(0,0,0,.1))}
+svg.dimmed .node-g.selected .nrect{stroke-width:3;filter:drop-shadow(0 3px 12px rgba(0,0,0,.15))}
+svg.dimmed .edge-path.hl{opacity:.55;stroke-width:2}
+svg.dimmed .edge-lbl.hl,.dimmed .edge-lbl-bg.hl{opacity:1}
+svg.dimmed .zone-rect{opacity:.15}
+svg.dimmed .zone-label{opacity:.15}
+
+/* Scrollbar */
+#sidebar::-webkit-scrollbar,#explorer-left::-webkit-scrollbar{width:5px}
+#sidebar::-webkit-scrollbar-track,#explorer-left::-webkit-scrollbar-track{background:transparent}
+#sidebar::-webkit-scrollbar-thumb,#explorer-left::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px}
+</style>
+</head>
+<body>
+<div id="app">
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>Five-Market Macroeconomic Model</h1>
+    <div class="mode-select">
+      <select id="view-mode" onchange="switchView(this.value)">
+        <option value="flowchart">Flowchart map</option>
+        <option value="explorer">Variable explorer</option>
+      </select>
+    </div>
+  </div>
+  <div class="legend-bar">
+    <span class="leg"><span class="d" style="background:#2563EB"></span>Goods</span>
+    <span class="leg"><span class="d" style="background:#059669"></span>Labor</span>
+    <span class="leg"><span class="d" style="background:#D97706"></span>Money</span>
+    <span class="leg"><span class="d" style="background:#7C3AED"></span>Trade</span>
+    <span class="leg"><span class="d" style="background:#DB2777"></span>Asset</span>
+    <span class="leg"><span class="d" style="background:transparent;border:1.5px dashed #DC2626"></span>Exogenous</span>
+  </div>
+  <span class="topbar-hint" id="hint-text">Scroll to zoom · Drag to pan · Click any variable</span>
+</div>
+
+<!-- MAIN -->
+<div id="main-area">
+  <!-- FLOWCHART VIEW -->
+  <div id="flowchart-view">
+    <div id="canvas-area">
+      <svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="zoom-controls">
+        <button onclick="zoomBtn(1.25)" title="Zoom in">+</button>
+        <button onclick="zoomBtn(.8)" title="Zoom out">−</button>
+        <button onclick="zoomFit()" title="Fit" style="font-size:12px">⊡</button>
+        <div class="zoom-pct" id="zpct">100%</div>
+      </div>
+    </div>
+  </div>
+  <!-- EXPLORER VIEW -->
+  <div id="explorer-view">
+    <div id="explorer-left"></div>
+  </div>
+  <!-- SHARED SIDEBAR -->
+  <div id="sidebar">
+    <div class="sb-head">
+      <div class="sb-head-inner">
+        <div><div class="sb-name" id="sb-name"></div><div class="sb-pill" id="sb-pill"></div></div>
+        <button class="sb-close" onclick="closeSB()">✕</button>
+      </div>
+      <div class="sb-tabs" id="sb-tabs">
+        <div class="sb-tab active" data-tab="overview" onclick="swTab('overview',this)">Overview</div>
+        <div class="sb-tab" data-tab="equations" onclick="swTab('equations',this)">Equations</div>
+        <div class="sb-tab" data-tab="connections" onclick="swTab('connections',this)">Connections</div>
+        <div class="sb-tab" data-tab="exam" onclick="swTab('exam',this)">Exam prep</div>
+      </div>
+    </div>
+    <div class="sb-body" id="sb-body"></div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="footer-credit">Made by <strong>Nabil Sachio Refat</strong> & <strong>Muhammad Rizky Narindra</strong></div>
+  <div class="footer-brand">Property of <strong>Legacy Bridge Capital</strong></div>
+</div>
+</div>
+
+<script>
+// ====================== MARKET COLORS ======================
+const MC={goods:{s:"#2563EB",f:"#DBEAFE",d:"#1E40AF",bg:"#EFF6FF",n:"Goods market",nc:"nb-goods",mz:"mz-goods"},labor:{s:"#059669",f:"#D1FAE5",d:"#065F46",bg:"#ECFDF5",n:"Labor market",nc:"nb-labor",mz:"mz-labor"},money:{s:"#D97706",f:"#FEF3C7",d:"#92400E",bg:"#FFFBEB",n:"Money & prices",nc:"nb-money",mz:"mz-money"},trade:{s:"#7C3AED",f:"#EDE9FE",d:"#5B21B6",bg:"#F5F3FF",n:"Trade & FX",nc:"nb-trade",mz:"mz-trade"},asset:{s:"#DB2777",f:"#FCE7F3",d:"#9D174D",bg:"#FDF2F8",n:"Asset market",nc:"nb-asset",mz:"mz-asset"},exo:{s:"#DC2626",f:"#FEE2E2",d:"#991B1B",bg:"#FEF2F2",n:"Exogenous / policy",nc:"nb-exo",mz:"mz-exo"}};
+
+// ====================== NODES ======================
+const NODES={
+Y:{x:200,y:130,w:90,h:60,lb:"Y & Yₛ",sub:"GDP & potential",m:"goods"},
+C:{x:360,y:100,w:60,h:42,lb:"C",sub:"Consumption",m:"goods"},
+I:{x:360,y:170,w:60,h:42,lb:"I",sub:"Investment",m:"goods"},
+GAP:{x:50,y:220,w:60,h:38,lb:"GAP",sub:"Output gap",m:"goods"},
+N:{x:240,y:55,w:60,h:42,lb:"N",sub:"Employment",m:"labor"},
+U:{x:620,y:110,w:60,h:42,lb:"U",sub:"Unemployment",m:"labor"},
+W:{x:240,y:260,w:80,h:42,lb:"W & gW",sub:"Wages",m:"labor"},
+LF:{x:620,y:40,w:60,h:42,lb:"LF",sub:"Labor force",m:"exo"},
+M:{x:120,y:520,w:60,h:42,lb:"M",sub:"Money supply",m:"money"},
+P:{x:530,y:460,w:56,h:42,lb:"P",sub:"Price level",m:"money"},
+r:{x:640,y:180,w:54,h:38,lb:"r",sub:"Real rate",m:"money"},
+i:{x:770,y:165,w:54,h:42,lb:"i",sub:"Policy rate",m:"exo"},
+EX:{x:380,y:320,w:56,h:40,lb:"EX",sub:"Exports",m:"trade"},
+IM:{x:380,y:390,w:56,h:40,lb:"IM",sub:"Imports",m:"trade"},
+E:{x:530,y:355,w:56,h:38,lb:"E",sub:"Exchange rate",m:"trade"},
+EXNO:{x:530,y:300,w:56,h:34,lb:"EXNO",sub:"Non-oil EX",m:"trade"},
+IMNO:{x:530,y:400,w:56,h:34,lb:"IMNO",sub:"Non-oil IM",m:"trade"},
+CUR:{x:120,y:420,w:66,h:40,lb:"CUR",sub:"Current acct",m:"trade"},
+INFLOW:{x:700,y:440,w:66,h:38,lb:"INFLOW",sub:"Capital flows",m:"trade"},
+STOCK:{x:120,y:600,w:66,h:40,lb:"STOCK",sub:"Equities",m:"asset"},
+BOND:{x:120,y:750,w:66,h:40,lb:"BOND",sub:"Bond prices",m:"asset"},
+WEALTH:{x:120,y:680,w:76,h:40,lb:"WEALTH",sub:"Net worth",m:"asset"},
+YIELD:{x:350,y:570,w:86,h:40,lb:"YIELD",sub:"Bond yields",m:"asset"},
+IGC:{x:530,y:600,w:60,h:36,lb:"IGC",sub:"Credit spread",m:"asset"},
+GCUR:{x:370,y:700,w:66,h:36,lb:"GCUR",sub:"Global CA",m:"trade"},
+G:{x:240,y:340,w:60,h:42,lb:"G",sub:"Gov spending",m:"exo"},
+K:{x:30,y:125,w:48,h:38,lb:"K",sub:"Capital",m:"exo"},
+A:{x:110,y:125,w:48,h:38,lb:"A",sub:"Technology",m:"exo"},
+TP:{x:770,y:40,w:58,h:36,lb:"T/P",sub:"Tax & transfers",m:"exo"},
+COVID:{x:770,y:100,w:62,h:34,lb:"COVID",sub:"",m:"exo"},
+iworld:{x:770,y:280,w:68,h:34,lb:"i_world",sub:"Global rate",m:"exo"},
+IMO:{x:770,y:400,w:56,h:34,lb:"IMO",sub:"Oil imports",m:"exo"},
+EXO:{x:770,y:230,w:56,h:34,lb:"EXO",sub:"Trade shock",m:"exo"},
+};
+
+// ====================== EDGES ======================
+const EDGES=[
+["C","Y","","goods"],["I","Y","","goods"],["G","Y","fiscal","exo"],["EX","Y","NX","trade"],
+["Y","C","income","goods"],["Y","IM","income→IM","goods"],["Y","I","accelerator","goods"],
+["Y","N","labor demand","goods"],["Y","GAP","","goods"],["Y","P","demand-pull","goods"],
+["Y","STOCK","earnings","goods"],["Y","M","money demand","goods"],["Y","U","Okun's Law","goods"],
+["K","Y","capital","exo"],["A","Y","TFP","exo"],["K","N","K-L complement","exo"],["A","W","productivity","exo"],
+["LF","U","labor supply","exo"],["LF","N","","labor"],["N","U","residual","labor"],["U","W","Phillips curve","labor"],
+["W","P","cost-push","labor"],["P","W","real wage adj","money"],["W","Y","cost→supply","labor"],["W","EX","competitiveness","labor"],
+["M","STOCK","liquidity","money"],["M","BOND","liquidity","money"],["M","i","money mkt","money"],
+["i","r","Fisher","exo"],["r","I","r→I (IS)","money"],["r","C","r→C","money"],["r","STOCK","discount rate","money"],["r","BOND","r→bonds","money"],
+["i","E","interest parity","exo"],["i","INFLOW","i differential","exo"],
+["E","EX","E→EX","trade"],["E","IM","E→IM","trade"],["E","P","pass-through","trade"],
+["EXNO","EX","","trade"],["IMNO","IM","","trade"],["IMO","IM","oil","exo"],["EXO","EX","shock","exo"],
+["EX","CUR","credit","trade"],["IM","CUR","debit","trade"],["CUR","E","BOP→E","trade"],
+["iworld","INFLOW","global rate","exo"],["INFLOW","E","capital→E","trade"],["INFLOW","BOND","foreign demand","trade"],["INFLOW","YIELD","demand→yield","trade"],
+["STOCK","WEALTH","","asset"],["BOND","WEALTH","","asset"],["WEALTH","C","wealth effect","asset"],
+["YIELD","BOND","inverse","asset"],["YIELD","STOCK","competing","asset"],["YIELD","IGC","benchmark","asset"],
+["P","YIELD","πᵉ→yields","money"],["GCUR","BOND","global flows","trade"],["CUR","GCUR","","trade"],
+["G","YIELD","deficit→supply","exo"],["G","CUR","twin deficits","exo"],["TP","C","disp. income","exo"],["TP","Y","","exo"],
+["GAP","P","inflation","goods"],["GAP","i","Taylor Rule","goods"],
+["COVID","C","lockdown","exo"],["COVID","U","layoffs","exo"],["COVID","P","supply shock","exo"],
+];
+
+// ====================== ZONES ======================
+const ZONES=[
+{x:160,y:65,w:280,h:210,m:"goods",lb:"Goods market"},
+{x:580,y:30,w:130,h:200,m:"labor",lb:"Labor"},
+{x:60,y:490,w:140,h:100,m:"money",lb:"Money"},
+{x:330,y:280,w:300,h:210,m:"trade",lb:"Trade & FX"},
+{x:60,y:560,w:220,h:250,m:"asset",lb:"Asset market"},
+];
+
+// ====================== DATA ======================
+const DATA={
+Y:{name:"Y — Real GDP (Output)",desc:"Total real output. The central hub connecting all five markets — determined by AD (C+I+G+NX) in the short run and production function (A·Kᵅ·N¹⁻ᵅ) in the long run.",eqs:["Y = C + I + G + (EX − IM)","Y = A · Kᵅ · N¹⁻ᵅ","Yₛ = potential GDP when N = N*","GAP = Y − Yₛ","Multiplier = 1/(1 − c₁(1−t) + m)"],det:["C — consumption (55-70% of GDP)","I — investment (most volatile)","G — government spending (exogenous)","EX − IM — net exports","Supply: A, K, N"],eff:["N ↑ via labor demand","U ↓ via Okun's Law: Δu ≈ −0.5(gY − gY*)","C ↑ via income (multiplier)","IM ↑ via income","P ↑ via demand-pull","STOCK ↑ via earnings","GAP triggers policy response"],chains:["Y↑ → N↑ → U↓ → W↑ → P↑  (goods → labor → prices)","Y↑ → IM↑ → CUR↓ → E depreciates  (goods → trade)","Y↑ → earnings↑ → STOCK↑ → WEALTH↑ → C↑  (goods → assets)","Y↑ → money demand↑ → i↑ → I↓  (partial offset)","Y↑ → GAP↑ → Taylor Rule → i↑ → cooling  (self-correcting)"],intuition:"Y is the grand central station. Every market feeds into it and it feeds back into every market. Short run = demand-determined. Long run = supply-determined. The gap between Y and Yₛ drives everything.",tip:"Always: (1) Identify AD vs AS shift, (2) direction, (3) trace through ALL five markets. Use multiplier for quantitative answers.",graph:"ADAS"},
+C:{name:"C — Consumption",desc:"Household spending — largest GDP component (55-70%). Engine of the Keynesian multiplier.",eqs:["C = C₀ + c₁(Y−T) + c₂·WEALTH − c₃·r","c₁ = MPC (0 < c₁ < 1)","Multiplier = 1/(1−c₁(1−t)+m)"],det:["Y − T (disposable income)","WEALTH (stocks + bonds + housing)","r (borrowing cost)","Consumer confidence (C₀)"],eff:["Y — direct + multiplier","IM — via marginal propensity to import"],chains:["Y↑ → C↑ → Y↑ (multiplier loop)","STOCK↑ → WEALTH↑ → C↑ (asset channel)","r↑ → C↓ → Y↓ (monetary transmission)","T↑ → disposable income↓ → C↓"],intuition:"Income → spending → income for others → multiplier. MPC < 1 limits the multiplier. Wealth effect: STOCK↑ → feel richer → spend more.",tip:"MPC determines multiplier. WEALTH shifts C₀ (level). Tax multiplier < spending multiplier (MPC < 1).",graph:"CONS"},
+I:{name:"I — Investment",desc:"Most volatile GDP component. Primary monetary policy channel. Inversely related to r.",eqs:["I = I₀ − b·r + d·Y","Tobin's q = market value / replacement cost"],det:["r (inverse — primary)","Y (accelerator)","Business confidence","Tobin's q (STOCK channel)","IGC credit spreads"],eff:["Y — AD component","K — capital accumulation","Yₛ — via higher K"],chains:["i↑ → r↑ → I↓ → Y↓ → N↓ → U↑ (monetary transmission)","Y↑ → I↑ → K↑ → Yₛ↑ (growth)","STOCK↑ → q>1 → I↑ (Tobin's q)"],intuition:"Where interest rates bite: r↑ → fewer projects NPV-positive → I falls → recession.",tip:"IS curve: r↑ → I↓ → Y↓. Slope depends on b (interest sensitivity).",graph:"INV"},
+G:{name:"G — Government Spending",desc:"Fiscal policy instrument. Direct AD injection. Subject to crowding out.",eqs:["ΔY/ΔG = 1/(1−c₁(1−t)+m)","Budget: BB = T − G"],det:["Political decisions (exogenous)","Automatic stabilizers","Fiscal space"],eff:["Y ↑ (direct + multiplier)","BOND supply ↑ → YIELD ↑ (crowding out)","CUR ↓ (twin deficits)"],chains:["G↑ → Y↑ → N↑ → U↓ (stimulus)","G↑ → deficit → BOND supply↑ → YIELD↑ → I↓ (crowding out)","G↑ → Y↑ → IM↑ → CUR↓ (twin deficits)"],intuition:"Direct injection vs crowding out. In recession: multiplier dominates. At full employment: crowding out dominates.",tip:"IS-LM: G↑ shifts IS right → Y↑ and i↑. Mundell-Fleming: fixed E → fiscal works; flexible E → offset by appreciation.",graph:"FISC"},
+GAP:{name:"GAP — Output Gap",desc:"Y − Yₛ. Positive = overheating. Negative = recession. Drives Taylor Rule.",eqs:["GAP = Y − Yₛ","Taylor: i = r* + π + 0.5(π−π*) + 0.5·GAP/Yₛ"],det:["Y (demand side)","Yₛ (supply side)"],eff:["P (inflation pressure)","i (Taylor Rule)","Self-correcting mechanism"],chains:["GAP>0 → P↑ → i↑ → r↑ → I↓ → Y↓ → closes","GAP<0 → U↑ → W↓ → P↓ → i↓ → I↑ → Y↑ → closes"],intuition:"Economy's thermometer. Self-corrects via SRAS adjustment, but slowly — policy speeds it up.",tip:"Self-correction: GAP>0 → SRAS shifts left (wages up) → Y→Yₛ at higher P.",graph:"GAPC"},
+N:{name:"N — Employment",desc:"Bridge between goods and labor markets. Driven by Y via labor demand.",eqs:["Nᵈ = f(Y, W/P, A)","Equilibrium: MPL = W/P","N = LF − U"],det:["Y (labor demand driver)","W/P (real wage)","A, K (shift demand)","LF (supply ceiling)"],eff:["Y (production function)","U = LF − N","W (labor market tightness)"],chains:["Y↑ → Nᵈ↑ → N↑ → U↓ → W↑ → P↑","A↑ → MPL↑ → Nᵈ↑ → N↑"],intuition:"When GDP rises, firms need workers → N↑ → U↓. This is Okun's Law in action.",tip:"Labor market: W/P vertical axis, N horizontal. Demand slopes down (diminishing MPL), supply vertical at LF.",graph:"LABOR"},
+U:{name:"U — Unemployment",desc:"Links to wages via Phillips curve, to output via Okun's Law.",eqs:["u = (LF−N)/LF","Okun's: Δu ≈ −0.5(gY−gY*)"],det:["N (from labor demand)","LF","gY vs gY*"],eff:["W & gW (Phillips curve)","P (wage-price spiral)","C (demand feedback)"],chains:["Y↑ → gY>gY* → U↓ (Okun's)","U↓ → W↑ → P↑ (Phillips)","U↑ → C↓ → Y↓ (recession deepens)"],intuition:"Okun's bridges GDP to unemployment. Phillips bridges unemployment to inflation. Together: the complete macro loop.",tip:"Need 2% excess growth to cut U by 1pp. Three types: frictional, structural, cyclical.",graph:"OKUN"},
+W:{name:"W & gW — Wages",desc:"Set by Phillips curve. Key wage-price spiral channel.",eqs:["gW = πᵉ − β(u−u*) + gA","W/P = MPL in equilibrium"],det:["U (inverse — Phillips)","πᵉ (expectations)","gA (productivity)"],eff:["P (cost-push)","C (real income)","EX (competitiveness)"],chains:["U↓ → W↑ → P↑ → πᵉ↑ → W↑ (spiral)","W↑ → unit costs↑ → EX↓ → CUR↓","gA↑ → W can rise without P↑"],intuition:"Low U → bargaining power → wage spiral. Central banks break it by raising i. Productivity (gA) is the escape valve.",tip:"Phillips curve is expectations-augmented. If πᵉ de-anchors → stagflation.",graph:"PHILLIPS"},
+LF:{name:"LF — Labor Force",desc:"Exogenous labor ceiling. Demographics + participation.",eqs:["LF = N + U","N* = LF(1−u*)"],det:["Demographics","Participation rates","Immigration"],eff:["N*, Yₛ","U","W pressure"],chains:["LF↑ → N*↑ → Yₛ↑ → non-inflationary growth","LF↓ (aging) → Yₛ↓ → growth constrained"],intuition:"Japan's shrinking LF = growth problem. Immigration = LF↑ = growth room.",tip:"LF shifts labor supply AND LRAS simultaneously.",graph:"LFPART"},
+M:{name:"M — Money Supply",desc:"Central bank tool. Determines LM curve. Transmits via i and asset prices.",eqs:["M/P = L(Y,i)","Long run: MV = PY"],det:["Central bank (OMO, QE)","Banking credit creation"],eff:["i ↓ when M↑","r, P, BOND, STOCK, E"],chains:["M↑ → i↓ → r↓ → I↑ → Y↑","M↑ → BOND↑ → YIELD↓","M↑ → P↑ (long run)"],intuition:"M↑ → excess liquidity → buy bonds → yields fall → rates fall → stimulus. Liquidity trap: if i≈0, M increases don't work.",tip:"IS-LM: M↑ shifts LM right → i↓, Y↑. Liquidity trap = monetary policy ineffective.",graph:"MONEY"},
+P:{name:"P — Price Level",desc:"Where AD meets AS. Links all five markets via real values.",eqs:["r = i − πᵉ","Real wage: W/P","Real money: M/P","Real exchange rate: E·P*/P"],det:["AD shifts (demand-pull)","AS shifts (cost-push)","M growth (monetary)","πᵉ (expectations)","GAP"],eff:["r, W/P, M/P","Real E → competitiveness","Real BOND returns","Purchasing power"],chains:["P↑ → M/P↓ → i↑ → I↓ (self-correcting)","P↑ → W/P↓ → W↑ demand (spiral)","P↑ → real E appreciates → EX↓ → CUR↓","P↑ → Taylor Rule → i↑ → cooling"],intuition:"Three sources: demand-pull (AD right), cost-push (SRAS left), monetary (excess M). Treatment differs for each.",tip:"Always identify inflation source. Cost-push = hardest policy case (stagflation dilemma).",graph:"INFL"},
+i:{name:"i — Policy Interest Rate",desc:"Central bank's steering wheel. Taylor Rule. Transmits to everything.",eqs:["Taylor: i = r* + π + 0.5(π−π*) + 0.5·GAP/Yₛ","Fisher: r = i − πᵉ","Interest parity: i = i_world + E(ΔE)/E + RP"],det:["Central bank decision","Taylor Rule","π*, r*"],eff:["r, I, C, E, BOND, STOCK, INFLOW, M demand"],chains:["i↑ → r↑ → I↓+C↓ → Y↓ (domestic)","i↑ → INFLOW↑ → E appreciates → EX↓ (FX channel)","i↑ → STOCK↓, BOND↓ → WEALTH↓ → C↓ (asset channel)"],intuition:"Raise i → cools everything. Lower i → stimulates. Taylor principle: if π rises 1%, raise i by 1.5%+ to actually increase r.",tip:"Taylor principle: i response must exceed π change. Mundell-Fleming: flexible E → monetary works via E; fixed E → impotent.",graph:"TAYLOR"},
+r:{name:"r — Real Interest Rate",desc:"What actually matters for decisions. IS curve vertical axis. r = i − πᵉ.",eqs:["r = i − πᵉ","I = I₀ − b·r"],det:["i, πᵉ, M/P, global r"],eff:["I, C, E, STOCK, BOND"],chains:["r↑ → I↓ → Y↓ (IS core)","r↑ → capital inflow → E appreciates → EX↓","r↑ → STOCK↓ → WEALTH↓"],intuition:"If i=5% but πᵉ=4%, r=1% — cheap. If i=3% and πᵉ=1%, r=2% — tighter. Central bank must raise i MORE than π to actually tighten.",tip:"Always use r (not i) for IS curve. Taylor principle: Δi > Δπ to change r.",graph:"FISHER"},
+EX:{name:"EX — Exports",desc:"Foreign demand injection. Depends on Y_world, E, competitiveness.",eqs:["EX = EXNO + EX_oil","EX = f(Y_world, E·P*/P)","Marshall-Lerner: |εEX|+|εIM| > 1"],det:["Y_world (NOT domestic Y)","E (depreciation → EX↑)","W (competitiveness)","Trade policy, EXO shocks"],eff:["Y, CUR, E, N"],chains:["E depreciates → EX↑ → Y↑","Y_world↑ → EX↑ → Y↑","W↑ → competitiveness↓ → EX↓"],intuition:"Exports depend on FOREIGN income. Depreciation helps but with J-curve lag.",tip:"EX depends on Y_world, NOT domestic Y (common exam trap). Marshall-Lerner condition.",graph:"TRADE"},
+IM:{name:"IM — Imports",desc:"Leakage from domestic demand. Depends on domestic Y and E. Reduces multiplier.",eqs:["IM = m·Y + f(E·P*/P)","Open multiplier: 1/(1−c₁(1−t)+m)"],det:["Y (domestic — primary)","E, P/P*","IMO (oil — inelastic)"],eff:["Y leakage","CUR debit","Multiplier reduction"],chains:["Y↑ → IM↑ → CUR↓ → E depreciates","E depreciates → IM↓ (switching)"],intuition:"IM depends on DOMESTIC Y. High m = small multiplier = policy less effective domestically.",tip:"m in multiplier denominator. Higher m = smaller multiplier = all domestic policies weaker.",graph:"IMPORTS"},
+E:{name:"E — Exchange Rate",desc:"E↑ = depreciation. Determined by CUR + capital flows. Interest parity.",eqs:["Interest parity: i = i_world + E(ΔE)/E + RP","Real: q = E·P*/P"],det:["i − i_world (short run)","CUR (medium run)","INFLOW, risk premium"],eff:["EX, IM, P (pass-through)","CUR (J-curve)"],chains:["i↑ → INFLOW↑ → E appreciates → EX↓","CUR deficit → E depreciates → self-correcting","E depreciates → P↑ (imported inflation)"],intuition:"Short run: capital flows dominate. Medium run: trade flows reassert. Interest parity links them.",tip:"E↑ = depreciation. J-curve: CUR initially worsens. Impossible trinity: pick 2 of 3.",graph:"EXRATE"},
+EXNO:{name:"EXNO — Non-Oil Exports",desc:"Structural export capacity beyond commodities.",eqs:["EX = EXNO + EX_oil"],det:["E, Y_world, W, productivity"],eff:["EX, CUR"],chains:["W↑ → EXNO↓","A↑ → EXNO↑"],intuition:"Strong EXNO = diversified, resilient economy.",tip:"Structural analysis: distinguish commodity vs non-commodity exports.",graph:null},
+IMNO:{name:"IMNO — Non-Oil Imports",desc:"Non-commodity imports. More elastic than oil.",eqs:["IM = IMNO + IMO"],det:["Y, E, tariffs"],eff:["IM, CUR"],chains:["Y↑ → IMNO↑","E depreciates → IMNO↓"],intuition:"IMNO responds to income and price signals; IMO doesn't.",tip:"Different elasticities — separate in analysis.",graph:null},
+IMO:{name:"IMO — Oil Imports",desc:"Price-inelastic. Source of stagflationary supply shocks.",eqs:["IMO = P_oil × Q_oil"],det:["Global oil price (exogenous)","Energy intensity"],eff:["IM, CUR, E, P, Y"],chains:["P_oil↑ → IMO↑ → CUR↓ → E↓ → P↑","P_oil↑ → SRAS left → Y↓ AND P↑ (stagflation)"],intuition:"Oil shock = central bank's nightmare: P↑ AND Y↓. No good policy answer.",tip:"Stagflation = SRAS left. Examples: 1973, 2022.",graph:null},
+CUR:{name:"CUR — Current Account",desc:"EX − IM. Deficit = living beyond means, financed by INFLOW.",eqs:["CUR ≈ EX − IM","CUR = S − I","BOP: CUR + Financial = 0"],det:["EX, IM, E, Y vs Y_world"],eff:["E, GCUR, INFLOW, BOND"],chains:["CUR deficit → E depreciates → self-correcting","G↑ → Y↑ → CUR↓ (twin deficits)"],intuition:"Persistent deficit = foreigners lending you money. Sudden stop → crisis.",tip:"Twin deficits: fiscal deficit → CUR deficit. S − I = NX identity.",graph:"CUR"},
+INFLOW:{name:"INFLOW — Capital Inflows",desc:"Driven by i differentials. Finances CUR deficits. Affects E.",eqs:["INFLOW = f(i−i_world, risk, growth)","BOP: CUR + INFLOW = 0"],det:["i − i_world","Growth prospects","Risk appetite"],eff:["E, BOND, YIELD, STOCK"],chains:["i↑ → INFLOW↑ → E appreciates → EX↓","INFLOW reversal → E crash → crisis"],intuition:"Mundell-Fleming: free capital + flexible E → monetary works via E. Impossible trinity.",tip:"Impossible trinity: free capital flows + fixed E + independent monetary policy — pick 2.",graph:"INFLOWS"},
+STOCK:{name:"STOCK — Stock Prices",desc:"Discounts future earnings at rate r. Wealth effect + Tobin's q channels.",eqs:["P = Σ E(div)/(1+r)^t","Tobin's q = mkt cap / replacement cost"],det:["r (inverse — discount rate)","Y (earnings growth)","M (liquidity)","Sentiment"],eff:["WEALTH → C","I via Tobin's q","Confidence"],chains:["r↑ → STOCK↓ → WEALTH↓ → C↓ → Y↓","Y↑ → earnings↑ → STOCK↑ → WEALTH↑ → C↑","STOCK↑ → q>1 → I↑"],intuition:"Two forces: earnings (from Y, bullish) vs discount rate (from r, bearish). Rate hikes often hurt stocks even in strong economies.",tip:"Wealth effect MPC ~0.03-0.05. 20% drop → ~1-1.5% GDP consumption loss.",graph:"STOCK"},
+BOND:{name:"BOND — Bond Prices",desc:"Inverse of yields. Government financing. QE transmission. Risk-free benchmark.",eqs:["P_bond ↔ YIELD (inverse)","Supply = government deficit"],det:["YIELD (inverse)","i, πᵉ, G−T, INFLOW, QE"],eff:["YIELD, WEALTH, r, I, E"],chains:["i↑ → BOND↓ → YIELD↑ → I↓ (monetary transmission)","G↑ → BOND supply↑ → YIELD↑ → I↓ (crowding out)","INFLOW↑ → BOND demand↑ → YIELD↓ → I↑"],intuition:"Bond prices and yields are inverses. QE: buy bonds → prices up → yields down → stimulus.",tip:"'Yields rise' = bond prices fall = borrowing costs up = investment down.",graph:"BOND"},
+WEALTH:{name:"WEALTH — Household Net Worth",desc:"STOCK + BOND + Housing − Debt. Bridge from asset prices to consumption.",eqs:["WEALTH = STOCK + BOND + Housing − Debt","C = C₀ + c₁(Y−T) + c₂·WEALTH"],det:["STOCK, BOND, housing prices","Debt levels"],eff:["C (wealth effect)","Confidence","Collateral → borrowing"],chains:["STOCK↑ → WEALTH↑ → C↑ → Y↑","WEALTH crash → deleveraging → C↓↓ → Y↓↓ (2008)"],intuition:"Wall Street → Main Street bridge. Small MPC per dollar but enormous in aggregate.",tip:"20% stock drop → ~1-1.5% GDP consumption loss. 2008: housing + stock crash = devastating.",graph:null},
+YIELD:{name:"YIELD — Bond Yields",desc:"Inverse of BOND prices. Risk-free benchmark. Yield curve shape predicts recessions.",eqs:["YIELD = i + term premium + πᵉ","Real yield = YIELD − πᵉ"],det:["i, πᵉ, BOND supply/demand, INFLOW"],eff:["r benchmark, I, STOCK (competing), E, Gov debt cost"],chains:["G↑ → BOND supply↑ → YIELD↑ → I↓ (crowding out)","INFLOW↑ → YIELD↓ → easier conditions","Inverted yield curve → recession signal"],intuition:"Yield curve inversion (short>long) predicted every US recession since 1970.",tip:"Crowding out: G↑ → deficit → BOND supply↑ → YIELD↑ → I↓.",graph:"YIELD"},
+IGC:{name:"IGC — Investment Grade Credit",desc:"Corporate credit spreads. Financial accelerator — amplifies business cycles.",eqs:["Corp yield = YIELD + spread"],det:["YIELD, Y, risk appetite, M"],eff:["I (actual corp borrowing cost)","Financial stability"],chains:["Y↓ → spreads widen → I↓ more → Y↓ (accelerator)"],intuition:"Financial accelerator: recessions widen spreads → borrowing expensive → investment falls more → recession deepens.",tip:"Explains why financial crises cause deep recessions.",graph:null},
+GCUR:{name:"GCUR — Global Current Account",desc:"Global mirror of domestic CUR. Surpluses = deficits globally.",eqs:["Σ CUR_i = 0"],det:["Global imbalances, commodity cycles"],eff:["E, BOND, INFLOW"],chains:["Global savings glut → low r globally"],intuition:"One country's surplus = another's deficit. US deficit = China surplus drives FX pressures.",tip:"Global imbalances drive capital flows and exchange rates.",graph:null},
+K:{name:"K — Capital Stock",desc:"Accumulated via investment. Diminishing returns. Production function input.",eqs:["K_{t+1} = K_t + I_t − δK_t","Y = A·Kᵅ·N¹⁻ᵅ"],det:["I, depreciation δ"],eff:["Yₛ, MPL, N demand, r (MPK)"],chains:["I↑ → K↑ → Yₛ↑","K↑ → MPL↑ → Nᵈ↑"],intuition:"Today's investment = tomorrow's capacity. Diminishing returns: only A sustains long-run growth.",tip:"Solow: K accumulation has diminishing returns. Only A growth sustains per-capita growth.",graph:"SOLOW"},
+A:{name:"A — Technology / TFP",desc:"Solow residual. Only driver of sustained long-run per-capita growth.",eqs:["gA = gY − α·gK − (1−α)·gN"],det:["R&D, institutions, education, openness"],eff:["Yₛ, MPL, MPK, W (productivity offset)"],chains:["A↑ → Yₛ↑ → non-inflationary growth","A↑ → MPL↑ → wages can rise without P↑","A↑ → MPK↑ → I↑ → K↑ (virtuous cycle)"],intuition:"The magic variable. No theoretical limit unlike K. Why institutions and innovation matter most.",tip:"A shifts both LRAS and SRAS right. Only variable without tradeoffs.",graph:"TFP"},
+TP:{name:"T/P — Taxes & Transfers",desc:"Fiscal instruments affecting disposable income. Automatic stabilizers.",eqs:["Disposable income = Y − T + Transfers","Tax multiplier = −c₁/(1−c₁(1−t)+m)","Balanced-budget multiplier = 1"],det:["Tax policy","Transfer programs","Auto stabilizers"],eff:["C, Y, budget balance, BOND supply"],chains:["T↓ → disposable income↑ → C↑ → Y↑","Auto stabilizers cushion recessions"],intuition:"Tax multiplier < spending multiplier (MPC < 1). Haavelmo: balanced budget multiplier = 1.",tip:"Tax mult < G mult. Balanced-budget mult = 1.",graph:null},
+COVID:{name:"COVID — Pandemic Shock",desc:"Simultaneous AD↓ and AS↓. The 'everything shock.'",eqs:["AD↓ (C collapse) + AS↓ (supply disruption)","P direction ambiguous"],det:["Exogenous health crisis"],eff:["C, Y, N, LF, P, G, M, STOCK — everything"],chains:["COVID → C↓ + AS↓ → Y↓↓","Policy: G↑↑ + M↑↑ → recovery → P↑↑"],intuition:"Unique: both demand AND supply shock. Unprecedented policy response → post-pandemic inflation surge.",tip:"Both AD↓ and AS↓. P ambiguous. Y falls. Perfect exam question.",graph:null},
+EXO:{name:"EXO — Trade Shocks",desc:"Trade wars, sanctions, supply chain disruptions.",eqs:["Shifts EX schedule"],det:["Geopolitics, policy, disruptions"],eff:["EX, CUR, E, Y, N"],chains:["EXO negative → EX↓ → NX↓ → AD↓ → Y↓"],intuition:"Unpredictable shocks hit trade first, then cascade.",tip:"Trace: EX↓ → NX↓ → AD↓ → Y↓ → N↓ → U↑.",graph:null},
+iworld:{name:"i_world — World Interest Rate",desc:"Fed Funds rate = global constraint. Drives capital flows for small open economies.",eqs:["Interest parity: i = i_world + E(ΔE)/E + RP"],det:["Fed policy, global cycle"],eff:["INFLOW, E, domestic i, BOND, r"],chains:["i_world↑ → INFLOW↓ → E depreciates → P↑ → domestic i must rise","Fed tightens → EM forced to tighten too"],intuition:"For Indonesia and EM: the Fed is the global central bank. When Fed tightens, capital leaves.",tip:"Mundell-Fleming: perfect mobility → i ≈ i_world + RP.",graph:null},
+};
+
+// ====================== GRAPH CONFIGS ======================
+function getGC(t){const C={ADAS:{type:'scatter',data:{datasets:[{label:'AD',data:[{x:20,y:88},{x:40,y:68},{x:60,y:53},{x:80,y:42},{x:100,y:33}],borderColor:'#2563EB',showLine:true,pointRadius:0,borderWidth:2},{label:'SRAS',data:[{x:30,y:25},{x:50,y:35},{x:65,y:50},{x:75,y:68},{x:82,y:88}],borderColor:'#D97706',showLine:true,pointRadius:0,borderWidth:2},{label:'LRAS',data:[{x:68,y:20},{x:68,y:92}],borderColor:'#DC2626',showLine:true,pointRadius:0,borderWidth:2,borderDash:[6,3]},{label:'Eq.',data:[{x:65,y:52}],pointBackgroundColor:'#111',pointRadius:5,pointBorderWidth:0}]},options:{scales:{x:{title:{display:true,text:'Real GDP (Y)'},min:10,max:110},y:{title:{display:true,text:'Price level (P)'},min:15,max:98}}}},CONS:{type:'scatter',data:{datasets:[{label:'C(Y−T)',data:[{x:10,y:25},{x:30,y:40},{x:50,y:55},{x:70,y:70},{x:90,y:85}],borderColor:'#2563EB',showLine:true,pointRadius:0,borderWidth:2.5},{label:'45°',data:[{x:10,y:10},{x:90,y:90}],borderColor:'#ccc',showLine:true,pointRadius:0,borderWidth:1,borderDash:[4,4]}]},options:{scales:{x:{title:{display:true,text:'Disposable income'},min:0,max:100},y:{title:{display:true,text:'Consumption'},min:0,max:100}}}},INV:{type:'scatter',data:{datasets:[{label:'I(r)',data:[{x:80,y:10},{x:65,y:25},{x:50,y:40},{x:38,y:55},{x:28,y:70},{x:20,y:85}],borderColor:'#2563EB',showLine:true,pointRadius:0,borderWidth:2.5}]},options:{scales:{x:{title:{display:true,text:'Investment (I)'},min:10,max:100},y:{title:{display:true,text:'Real rate (r)'},min:0,max:95}}}},FISC:{type:'bar',data:{labels:['ΔG','R1','R2','R3','R4','Total ΔY'],datasets:[{data:[10,7,4.9,3.4,2.4,27.7],backgroundColor:['#2563EB','#60A5FA','#93C5FD','#BFDBFE','#DBEAFE','#059669'],borderRadius:4}]},options:{scales:{y:{title:{display:true,text:'GDP change'}}}}},GAPC:{type:'line',data:{labels:['t-4','t-3','t-2','t-1','t','t+1','t+2','t+3','t+4'],datasets:[{label:'Y',data:[98,97,95,93,92,94,97,99,100],borderColor:'#2563EB',borderWidth:2,pointRadius:2,fill:false},{label:'Yₛ',data:[100,100,100,100,100,100,100,100,100],borderColor:'#DC2626',borderWidth:2,borderDash:[6,3],pointRadius:0,fill:false}]},options:{scales:{y:{min:88,max:104}}}},LABOR:{type:'scatter',data:{datasets:[{label:'Nᵈ',data:[{x:90,y:15},{x:75,y:30},{x:60,y:45},{x:45,y:60},{x:30,y:75}],borderColor:'#2563EB',showLine:true,pointRadius:0,borderWidth:2.5},{label:'LF',data:[{x:70,y:10},{x:70,y:90}],borderColor:'#059669',showLine:true,pointRadius:0,borderWidth:2.5},{label:'Eq.',data:[{x:70,y:38}],pointBackgroundColor:'#111',pointRadius:5}]},options:{scales:{x:{title:{display:true,text:'Employment (N)'},min:10,max:100},y:{title:{display:true,text:'Real wage (W/P)'},min:5,max:95}}}},OKUN:{type:'scatter',data:{datasets:[{label:"Okun's Law",data:[{x:-2,y:2.5},{x:0,y:1.5},{x:1,y:1},{x:2,y:.5},{x:3,y:0},{x:4,y:-.5},{x:5,y:-1},{x:7,y:-2}],borderColor:'#059669',showLine:true,pointRadius:3,borderWidth:2.5,pointBackgroundColor:'#059669'}]},options:{scales:{x:{title:{display:true,text:'GDP growth (%)'},min:-3,max:8},y:{title:{display:true,text:'Δu (pp)'},min:-2.5,max:3}}}},PHILLIPS:{type:'scatter',data:{datasets:[{label:'Phillips',data:[{x:2,y:8},{x:3,y:5.5},{x:4,y:4},{x:5,y:3},{x:6,y:2.5},{x:7,y:2.2},{x:9,y:2}],borderColor:'#059669',showLine:true,pointRadius:2,borderWidth:2.5}]},options:{scales:{x:{title:{display:true,text:'u (%)'},min:1,max:10},y:{title:{display:true,text:'gW (%)'},min:0,max:10}}}},LFPART:{type:'bar',data:{labels:['Youth','Prime','Older','Total'],datasets:[{data:[55,83,40,63],backgroundColor:['#93C5FD','#2563EB','#60A5FA','#059669'],borderRadius:4}]},options:{scales:{y:{title:{display:true,text:'Participation %'},min:0,max:100}}}},MONEY:{type:'scatter',data:{datasets:[{label:'Mˢ/P',data:[{x:60,y:10},{x:60,y:92}],borderColor:'#D97706',showLine:true,pointRadius:0,borderWidth:2.5},{label:'Mᵈ',data:[{x:20,y:85},{x:35,y:60},{x:50,y:42},{x:65,y:30},{x:85,y:20}],borderColor:'#2563EB',showLine:true,pointRadius:0,borderWidth:2.5},{label:'Eq.',data:[{x:60,y:33}],pointBackgroundColor:'#111',pointRadius:5}]},options:{scales:{x:{title:{display:true,text:'M/P'},min:10,max:100},y:{title:{display:true,text:'i'},min:5,max:98}}}},INFL:{type:'scatter',data:{datasets:[{label:'AD',data:[{x:20,y:85},{x:40,y:65},{x:60,y:50},{x:80,y:38},{x:100,y:28}],borderColor:'#2563EB',showLine:true,pointRadius:0,borderWidth:2},{label:'AD\'→',data:[{x:30,y:85},{x:50,y:65},{x:70,y:50},{x:90,y:38}],borderColor:'#2563EB',showLine:true,pointRadius:0,borderWidth:2,borderDash:[6,3]},{label:'SRAS',data:[{x:25,y:22},{x:45,y:32},{x:60,y:45},{x:72,y:62},{x:80,y:85}],borderColor:'#D97706',showLine:true,pointRadius:0,borderWidth:2}]},options:{scales:{x:{title:{display:true,text:'GDP'},min:10,max:110},y:{title:{display:true,text:'P'},min:15,max:95}}}},TAYLOR:{type:'scatter',data:{datasets:[{label:'Taylor',data:[{x:-3,y:1},{x:-2,y:2},{x:-1,y:3},{x:0,y:4},{x:1,y:5},{x:2,y:6},{x:3,y:7}],borderColor:'#D97706',showLine:true,pointRadius:2,borderWidth:2.5,pointBackgroundColor:'#D97706'}]},options:{scales:{x:{title:{display:true,text:'GAP (%)'},min:-4,max:4},y:{title:{display:true,text:'i (%)'},min:0,max:8}}}},FISHER:{type:'bar',data:{labels:['Nominal i','− πᵉ','= Real r'],datasets:[{data:[5,3,2],backgroundColor:['#D97706','#DC2626','#059669'],borderRadius:4}]},options:{scales:{y:{min:0,max:6}}}},TRADE:{type:'scatter',data:{datasets:[{label:'EX',data:[{x:20,y:15},{x:35,y:30},{x:50,y:45},{x:65,y:58},{x:80,y:68},{x:95,y:76}],borderColor:'#059669',showLine:true,pointRadius:0,borderWidth:2.5},{label:'IM',data:[{x:85,y:15},{x:75,y:30},{x:65,y:45},{x:55,y:58},{x:45,y:68},{x:38,y:76}],borderColor:'#DC2626',showLine:true,pointRadius:0,borderWidth:2.5}]},options:{scales:{x:{title:{display:true,text:'Volume'},min:10,max:100},y:{title:{display:true,text:'E (depreciation →)'},min:10,max:85}}}},IMPORTS:{type:'scatter',data:{datasets:[{label:'IM(Y)',data:[{x:20,y:10},{x:35,y:20},{x:50,y:30},{x:65,y:40},{x:80,y:50},{x:95,y:60}],borderColor:'#DC2626',showLine:true,pointRadius:0,borderWidth:2.5}]},options:{scales:{x:{title:{display:true,text:'GDP (Y)'},min:10,max:100},y:{title:{display:true,text:'Imports'},min:0,max:70}}}},EXRATE:{type:'line',data:{labels:['t','','','','','','','','','t+9'],datasets:[{label:'E after i↓',data:[100,102,104,105.5,106.5,107,107.3,107.5,107.6,107.7],borderColor:'#7C3AED',borderWidth:2.5,pointRadius:1,fill:false}]},options:{scales:{y:{min:98,max:110}}}},CUR:{type:'line',data:{labels:['t','t+1','t+2','t+3','t+4','t+5','t+6','t+7'],datasets:[{label:'J-curve',data:[0,-1,-1.5,-1,-.3,.5,1.2,1.8],borderColor:'#7C3AED',borderWidth:2.5,pointRadius:2,fill:false},{label:'0',data:[0,0,0,0,0,0,0,0],borderColor:'#ccc',borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false}]},options:{scales:{y:{min:-2.5,max:2.5}}}},INFLOWS:{type:'scatter',data:{datasets:[{label:'Inflow',data:[{x:-2,y:10},{x:-1,y:25},{x:0,y:45},{x:1,y:62},{x:2,y:75},{x:3,y:85}],borderColor:'#7C3AED',showLine:true,pointRadius:2,borderWidth:2.5,pointBackgroundColor:'#7C3AED'}]},options:{scales:{x:{title:{display:true,text:'i − i_world'},min:-3,max:4},y:{title:{display:true,text:'Inflow'},min:0,max:100}}}},STOCK:{type:'scatter',data:{datasets:[{label:'P/E',data:[{x:2,y:90},{x:4,y:65},{x:6,y:48},{x:8,y:37},{x:10,y:30},{x:12,y:25}],borderColor:'#DB2777',showLine:true,pointRadius:2,borderWidth:2.5,pointBackgroundColor:'#DB2777'}]},options:{scales:{x:{title:{display:true,text:'r (%)'},min:0,max:14},y:{title:{display:true,text:'P/E'},min:15,max:100}}}},BOND:{type:'scatter',data:{datasets:[{label:'Price',data:[{x:1,y:95},{x:2,y:85},{x:3,y:76},{x:4,y:68},{x:5,y:61},{x:6,y:55},{x:8,y:45}],borderColor:'#DB2777',showLine:true,pointRadius:2,borderWidth:2.5,pointBackgroundColor:'#DB2777'}]},options:{scales:{x:{title:{display:true,text:'Yield (%)'},min:0,max:10},y:{title:{display:true,text:'Bond price'},min:35,max:100}}}},YIELD:{type:'line',data:{labels:['3m','6m','1y','2y','5y','10y','30y'],datasets:[{label:'Normal',data:[3,3.3,3.6,3.9,4.3,4.6,4.8],borderColor:'#059669',borderWidth:2.5,pointRadius:3,fill:false,pointBackgroundColor:'#059669'},{label:'Inverted',data:[5.2,5.1,4.9,4.6,4.2,4,3.9],borderColor:'#DC2626',borderWidth:2,borderDash:[6,3],pointRadius:3,fill:false,pointBackgroundColor:'#DC2626'}]},options:{scales:{y:{min:2.5,max:6}}}},SOLOW:{type:'scatter',data:{datasets:[{label:'f(k)',data:[{x:5,y:15},{x:15,y:32},{x:30,y:47},{x:50,y:60},{x:70,y:70},{x:90,y:78}],borderColor:'#059669',showLine:true,pointRadius:0,borderWidth:2.5},{label:'δk',data:[{x:5,y:3},{x:30,y:18},{x:50,y:30},{x:70,y:42},{x:90,y:54}],borderColor:'#DC2626',showLine:true,pointRadius:0,borderWidth:2,borderDash:[5,3]},{label:'k*',data:[{x:68,y:69}],pointBackgroundColor:'#111',pointRadius:5}]},options:{scales:{x:{title:{display:true,text:'k'},min:0,max:100},y:{title:{display:true,text:'Output/deprec.'},min:0,max:90}}}},TFP:{type:'scatter',data:{datasets:[{label:'A₁·f',data:[{x:10,y:18},{x:30,y:38},{x:50,y:50},{x:70,y:58},{x:90,y:64}],borderColor:'#999',showLine:true,pointRadius:0,borderWidth:2,borderDash:[4,3]},{label:'A₂·f (A↑)',data:[{x:10,y:28},{x:30,y:52},{x:50,y:66},{x:70,y:76},{x:90,y:83}],borderColor:'#059669',showLine:true,pointRadius:0,borderWidth:2.5}]},options:{scales:{x:{title:{display:true,text:'Inputs'},min:0,max:100},y:{title:{display:true,text:'Output'},min:10,max:95}}}}};return C[t]||null}
+
+// ====================== BUILD SVG FLOWCHART ======================
+const svgEl=document.getElementById('svg');const W_T=900,H_T=810;
+svgEl.setAttribute('viewBox',`0 0 ${W_T} ${H_T}`);svgEl.setAttribute('width',W_T);svgEl.setAttribute('height',H_T);
+const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+const mk=document.createElementNS('http://www.w3.org/2000/svg','marker');mk.setAttribute('id','ah');mk.setAttribute('viewBox','0 0 10 8');mk.setAttribute('refX','9');mk.setAttribute('refY','4');mk.setAttribute('markerWidth','6');mk.setAttribute('markerHeight','5');mk.setAttribute('orient','auto');
+const mp=document.createElementNS('http://www.w3.org/2000/svg','path');mp.setAttribute('d','M1 1L8 4L1 7');mp.setAttribute('fill','none');mp.setAttribute('stroke','context-stroke');mp.setAttribute('stroke-width','1.3');mp.setAttribute('stroke-linecap','round');mp.setAttribute('stroke-linejoin','round');mk.appendChild(mp);defs.appendChild(mk);svgEl.appendChild(defs);
+
+ZONES.forEach(z=>{const r=document.createElementNS('http://www.w3.org/2000/svg','rect');r.setAttribute('x',z.x);r.setAttribute('y',z.y);r.setAttribute('width',z.w);r.setAttribute('height',z.h);r.setAttribute('fill',MC[z.m].f);r.setAttribute('stroke',MC[z.m].s);r.setAttribute('rx',14);r.classList.add('zone-rect');svgEl.appendChild(r);const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',z.x+z.w/2);t.setAttribute('y',z.y+16);t.setAttribute('text-anchor','middle');t.setAttribute('fill',MC[z.m].d);t.classList.add('zone-label');t.textContent=z.lb;svgEl.appendChild(t)});
+
+const ADJ={};Object.keys(NODES).forEach(k=>ADJ[k]={out:new Set(),inn:new Set()});
+const eL=document.createElementNS('http://www.w3.org/2000/svg','g');svgEl.appendChild(eL);
+
+EDGES.forEach(([f,t,lb,em],idx)=>{const a=NODES[f],b=NODES[t];if(!a||!b)return;ADJ[f].out.add(t);ADJ[t].inn.add(f);
+const ax=a.x+a.w/2,ay=a.y+a.h/2,bx=b.x+b.w/2,by=b.y+b.h/2;
+function ep(cx,cy,w,h,tx,ty){const dx=tx-cx,dy=ty-cy,ad=Math.abs(dx),aD=Math.abs(dy),hw=w/2+4,hh=h/2+4;if(ad*hh>aD*hw){const s=dx>0?1:-1;return[cx+s*hw,cy+dy*hw/ad*s]}else{const s=dy>0?1:-1;return[cx+dx*hh/aD*s,cy+s*hh]}}
+const[x1,y1]=ep(ax,ay,a.w,a.h,bx,by),[x2,y2]=ep(bx,by,b.w,b.h,ax,ay);
+const mx=(x1+x2)/2,my=(y1+y2)/2,dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy)||1;
+const ca=Math.min(len*.14,22),nx=-dy/len*ca,ny=dx/len*ca;
+const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+p.setAttribute('d',`M${x1},${y1} Q${mx+nx},${my+ny} ${x2},${y2}`);p.setAttribute('stroke',MC[em].s);p.setAttribute('marker-end','url(#ah)');p.classList.add('edge-path');p.dataset.f=f;p.dataset.t=t;p.dataset.i=idx;eL.appendChild(p);
+if(lb){const lx=(x1+2*(mx+nx)+x2)/4,ly=(y1+2*(my+ny)+y2)/4;
+const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');bg.setAttribute('x',lx-lb.length*3);bg.setAttribute('y',ly-7);bg.setAttribute('width',lb.length*6);bg.setAttribute('height',13);bg.setAttribute('rx',3);bg.classList.add('edge-lbl-bg');bg.dataset.i=idx;eL.appendChild(bg);
+const lt=document.createElementNS('http://www.w3.org/2000/svg','text');lt.setAttribute('x',lx);lt.setAttribute('y',ly+1);lt.setAttribute('text-anchor','middle');lt.setAttribute('dominant-baseline','central');lt.classList.add('edge-lbl');lt.dataset.i=idx;lt.textContent=lb;eL.appendChild(lt)}});
+
+const nL=document.createElementNS('http://www.w3.org/2000/svg','g');svgEl.appendChild(nL);
+const EXO_K=new Set(['G','K','A','LF','i','COVID','TP','iworld','IMO','EXO']);
+Object.entries(NODES).forEach(([k,n])=>{const g=document.createElementNS('http://www.w3.org/2000/svg','g');g.classList.add('node-g');g.dataset.key=k;
+const rc=document.createElementNS('http://www.w3.org/2000/svg','rect');rc.classList.add('nrect');if(EXO_K.has(k))rc.classList.add('exo');rc.setAttribute('x',n.x);rc.setAttribute('y',n.y);rc.setAttribute('width',n.w);rc.setAttribute('height',n.h);rc.setAttribute('fill',MC[n.m].f);rc.setAttribute('stroke',MC[n.m].s);g.appendChild(rc);
+const tx=document.createElementNS('http://www.w3.org/2000/svg','text');tx.classList.add('nlabel');tx.setAttribute('x',n.x+n.w/2);tx.setAttribute('y',n.sub?n.y+n.h/2-5:n.y+n.h/2);tx.setAttribute('fill',MC[n.m].d);tx.textContent=n.lb;g.appendChild(tx);
+if(n.sub){const s=document.createElementNS('http://www.w3.org/2000/svg','text');s.classList.add('nsub');s.setAttribute('x',n.x+n.w/2);s.setAttribute('y',n.y+n.h/2+8);s.setAttribute('fill',MC[n.m].d);s.textContent=n.sub;g.appendChild(s)}
+g.addEventListener('click',e=>{e.stopPropagation();selNode(k)});nL.appendChild(g)});
+
+// ====================== ZOOM & PAN ======================
+let scale=1,tx_=0,ty_=0,drag=false,dX=0,dY=0;const area=document.getElementById('canvas-area');
+function apT(){svgEl.style.transform=`translate(${tx_}px,${ty_}px) scale(${scale})`;svgEl.style.transformOrigin='0 0';document.getElementById('zpct').textContent=Math.round(scale*100)+'%'}
+area.addEventListener('wheel',e=>{e.preventDefault();const f=e.deltaY<0?1.1:.9;const br=area.getBoundingClientRect();const mx=e.clientX-br.left,my=e.clientY-br.top;tx_=mx-(mx-tx_)*f;ty_=my-(my-ty_)*f;scale*=f;scale=Math.max(.25,Math.min(5,scale));apT()},{passive:false});
+area.addEventListener('mousedown',e=>{if(e.button===0){drag=true;dX=e.clientX-tx_;dY=e.clientY-ty_;area.style.cursor='grabbing'}});
+window.addEventListener('mousemove',e=>{if(drag){tx_=e.clientX-dX;ty_=e.clientY-dY;apT()}});
+window.addEventListener('mouseup',()=>{drag=false;area.style.cursor='grab'});
+function zoomBtn(f){const br=area.getBoundingClientRect();const cx=br.width/2,cy=br.height/2;tx_=cx-(cx-tx_)*f;ty_=cy-(cy-ty_)*f;scale*=f;scale=Math.max(.25,Math.min(5,scale));apT()}
+function zoomFit(){const br=area.getBoundingClientRect();const sx=br.width/W_T,sy=br.height/H_T;scale=Math.min(sx,sy)*.92;tx_=(br.width-W_T*scale)/2;ty_=(br.height-H_T*scale)/2;apT()}
+setTimeout(zoomFit,80);window.addEventListener('resize',()=>setTimeout(zoomFit,100));
+
+// ====================== EXPLORER VIEW ======================
+function buildExplorer(){
+const el=document.getElementById('explorer-left');
+const zoneOrder=[["goods","Goods Market (IS)",["Y","C","I","GAP"]],["labor","Labor Market",["N","U","W"]],["money","Money & Price Level",["M","P","r"]],["trade","Trade & Foreign Exchange",["EX","IM","E","EXNO","IMNO","CUR","GCUR","INFLOW"]],["asset","Asset Market",["STOCK","BOND","WEALTH","YIELD","IGC"]],["exo","Exogenous & Policy Variables",["G","K","A","LF","i","COVID","TP","EXO","iworld","IMO"]]];
+let h='';
+zoneOrder.forEach(([m,label,keys])=>{const mc=MC[m];h+=`<div class="market-zone ${mc.mz}"><h3>${label}</h3><div class="nodes-wrap">`;
+keys.forEach(k=>{const n=NODES[k];if(!n)return;const isExo=EXO_K.has(k);h+=`<button class="nbtn ${mc.nc}${isExo?' exo':''}" data-key="${k}" onclick="selNode('${k}')">${n.lb}</button>`});
+h+=`</div></div>`});
+h+=`<div class="hint-box" id="exp-hint">Click any variable to open the study panel →</div>`;
+el.innerHTML=h}
+buildExplorer();
+
+// ====================== NODE SELECTION ======================
+let selected=null,chartInst=null;
+function selNode(k){
+  selected=k;
+  // Highlight flowchart
+  svgEl.classList.add('dimmed');
+  const conn=new Set([k]);ADJ[k].out.forEach(c=>conn.add(c));ADJ[k].inn.forEach(c=>conn.add(c));
+  document.querySelectorAll('.node-g').forEach(g=>{g.classList.remove('hl','selected');if(conn.has(g.dataset.key))g.classList.add('hl');if(g.dataset.key===k)g.classList.add('selected')});
+  document.querySelectorAll('.edge-path').forEach(p=>{p.classList.toggle('hl',p.dataset.f===k||p.dataset.t===k)});
+  document.querySelectorAll('.edge-lbl,.edge-lbl-bg').forEach(el=>{const e=EDGES[el.dataset.i];if(e)el.classList.toggle('hl',e[0]===k||e[1]===k)});
+  // Highlight explorer buttons
+  document.querySelectorAll('.nbtn').forEach(b=>{b.classList.toggle('active',b.dataset.key===k)});
+  const eh=document.getElementById('exp-hint');if(eh)eh.style.display='none';
+  // Open sidebar
+  openSB(k);
+}
+function resetSVG(){svgEl.classList.remove('dimmed');document.querySelectorAll('.hl,.selected').forEach(e=>e.classList.remove('hl','selected'));document.querySelectorAll('.nbtn').forEach(b=>b.classList.remove('active'));const eh=document.getElementById('exp-hint');if(eh)eh.style.display=''}
+function resetAll(){selected=null;resetSVG();closeSBQuiet()}
+area.addEventListener('click',e=>{if(e.target===area||e.target===svgEl)resetAll()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')resetAll()});
+
+// ====================== SIDEBAR ======================
+function openSB(k){const d=DATA[k],n=NODES[k];if(!d)return;
+document.getElementById('sb-name').textContent=d.name;const pill=document.getElementById('sb-pill');pill.textContent=MC[n.m].n;pill.style.background=MC[n.m].bg;pill.style.color=MC[n.m].d;
+document.querySelectorAll('.sb-tab').forEach(t=>t.classList.remove('active'));document.querySelector('.sb-tab[data-tab="overview"]').classList.add('active');
+renderPanel(k,'overview');document.getElementById('sidebar').classList.add('open')}
+function closeSB(){resetAll();document.getElementById('sidebar').classList.remove('open');if(chartInst){chartInst.destroy();chartInst=null}}
+function closeSBQuiet(){document.getElementById('sidebar').classList.remove('open');if(chartInst){chartInst.destroy();chartInst=null}}
+function swTab(tab,el){document.querySelectorAll('.sb-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');if(selected)renderPanel(selected,tab)}
+
+function renderPanel(k,tab){if(chartInst){chartInst.destroy();chartInst=null}const d=DATA[k],n=NODES[k];if(!d)return;const body=document.getElementById('sb-body');let h='';
+if(tab==='overview'){
+  h+=`<div class="sb-desc">${d.desc}</div>`;
+  if(d.graph)h+=`<div class="chart-wrap"><div class="chart-title">Graph</div><canvas id="vc" height="180"></canvas></div>`;
+  if(d.intuition)h+=`<div class="sec"><div class="sec-title">Intuition</div><div class="insight-box intuition">💡 ${d.intuition}</div></div>`;
+  if(d.chains?.length){h+=`<div class="sec"><div class="sec-title">Key transmission chains</div><ul class="slist chain">`;d.chains.slice(0,4).forEach(c=>h+=`<li>${c}</li>`);h+=`</ul></div>`}
+}else if(tab==='equations'){
+  if(d.eqs?.length){h+=`<div class="sec"><div class="sec-title">Equations & identities</div>`;d.eqs.forEach(e=>h+=`<div class="eq">${e}</div>`);h+=`</div>`}
+  if(d.graph)h+=`<div class="chart-wrap"><div class="chart-title">Diagram</div><canvas id="vc" height="180"></canvas></div>`;
+  if(d.det?.length){h+=`<div class="sec"><div class="sec-title">Determinants</div><ul class="slist det">`;d.det.forEach(x=>h+=`<li>${x}</li>`);h+=`</ul></div>`}
+  if(d.eff?.length){h+=`<div class="sec"><div class="sec-title">Effects on other variables</div><ul class="slist eff">`;d.eff.forEach(x=>h+=`<li>${x}</li>`);h+=`</ul></div>`}
+}else if(tab==='connections'){
+  const iN=ADJ[k].inn,oN=ADJ[k].out;
+  h+=`<div class="sec"><div class="sec-title">Incoming (${iN.size})</div><div class="conn-section">`;
+  if(iN.size){h+=`<div class="conn-row"><span class="conn-dir into">From</span><div class="conn-chips">`;[...iN].forEach(c=>h+=`<span class="conn-chip" style="border-color:${MC[NODES[c].m].s}40;color:${MC[NODES[c].m].d}" onclick="selNode('${c}')">${NODES[c].lb}</span>`);h+=`</div></div>`}else h+=`<div style="font-size:12px;color:#aaa;font-style:italic">No incoming (exogenous)</div>`;
+  h+=`</div></div>`;
+  h+=`<div class="sec"><div class="sec-title">Outgoing (${oN.size})</div><div class="conn-section">`;
+  if(oN.size){h+=`<div class="conn-row"><span class="conn-dir outof">To</span><div class="conn-chips">`;[...oN].forEach(c=>h+=`<span class="conn-chip" style="border-color:${MC[NODES[c].m].s}40;color:${MC[NODES[c].m].d}" onclick="selNode('${c}')">${NODES[c].lb}</span>`);h+=`</div></div>`}
+  h+=`</div></div>`;
+  if(d.chains?.length){h+=`<div class="sec"><div class="sec-title">Full transmission mechanisms</div><ul class="slist chain">`;d.chains.forEach(c=>h+=`<li>${c}</li>`);h+=`</ul></div>`}
+}else if(tab==='exam'){
+  if(d.tip)h+=`<div class="sec"><div class="sec-title">Exam strategy</div><div class="insight-box examtip">📝 ${d.tip}</div></div>`;
+  if(d.eqs?.length){h+=`<div class="sec"><div class="sec-title">Equations to memorize</div>`;d.eqs.forEach(e=>h+=`<div class="eq">${e}</div>`);h+=`</div>`}
+  if(d.graph)h+=`<div class="chart-wrap"><div class="chart-title">Key graph</div><canvas id="vc" height="180"></canvas></div>`;
+  if(d.chains?.length){h+=`<div class="sec"><div class="sec-title">Chains to trace</div><ul class="slist chain">`;d.chains.forEach(c=>h+=`<li>${c}</li>`);h+=`</ul></div>`}
+  if(d.intuition)h+=`<div class="sec"><div class="sec-title">Intuition recap</div><div class="insight-box intuition">💡 ${d.intuition}</div></div>`;
+}
+body.innerHTML=h;document.getElementById('sidebar').scrollTop=0;
+if(d.graph){setTimeout(()=>{const cv=document.getElementById('vc');if(!cv)return;const cfg=getGC(d.graph);if(!cfg)return;
+const opts={responsive:true,maintainAspectRatio:false,animation:{duration:400},plugins:{legend:{display:true,labels:{boxWidth:10,font:{size:10,family:'Inter'}}},tooltip:{enabled:true}},scales:{}};
+for(const ax of['x','y']){if(cfg.options?.scales?.[ax])opts.scales[ax]={...cfg.options.scales[ax],grid:{color:'#EDEDEA'},ticks:{font:{size:9,family:'Inter'}},title:{...cfg.options.scales[ax].title,font:{size:9,family:'Inter',weight:'500'}}}}
+chartInst=new Chart(cv.getContext('2d'),{type:cfg.type,data:cfg.data,options:opts})},50)}}
+
+// ====================== VIEW SWITCHING ======================
+function switchView(mode){
+  closeSB();resetSVG();
+  if(mode==='flowchart'){
+    document.getElementById('flowchart-view').style.display='flex';
+    document.getElementById('explorer-view').style.display='none';
+    document.getElementById('hint-text').textContent='Scroll to zoom · Drag to pan · Click any variable';
+    setTimeout(zoomFit,50);
+  }else{
+    document.getElementById('flowchart-view').style.display='none';
+    document.getElementById('explorer-view').style.display='flex';
+    document.getElementById('hint-text').textContent='Click any variable to explore its full analysis';
+  }
+}
+</script>
+</body>
+</html>
